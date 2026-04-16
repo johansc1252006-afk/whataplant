@@ -1,4 +1,4 @@
 // config.js
-const IP = '10.67.232.214';  // 
+const IP = '192.168.1.90';  // 
 
 export default IP;
