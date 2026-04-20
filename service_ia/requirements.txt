@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+mysql-connector-python
+httpx
+python-multipart
+python-dotenv
+bcrypt
+requests
+duckduckgo-search
