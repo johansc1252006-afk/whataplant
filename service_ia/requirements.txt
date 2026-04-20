@@ -5,3 +5,8 @@ httpx
 python-multipart
 python-dotenv
 bcrypt
+bcrypt
+requests
+duckduckgo-search
+ddgs
+
