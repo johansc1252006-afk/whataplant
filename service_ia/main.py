@@ -144,3 +144,18 @@ async def save_scan(request: Request):
     except Exception as e:
         print(f"❌ Erreur sauvegarde scan: {e}")
         return {"status": "error", "message": str(e)}
+    
+@app.post("/analyze-plant")
+async def analyze_plant(request: Request):
+    try:
+        data = await request.json()
+        nom_plante = data.get("nom_plante")
+        if not nom_plante:
+            return {"status": "error", "message": "Nom de plante manquant"}
+        analyse = await grok_client.analyser_plante(nom_plante)
+        if analyse is None:
+            return {"status": "error", "message": "L'analyse a échoué"}
+        return {"status": "success", "analyse": analyse}
+    except Exception as e:
+        print(f"❌ Erreur /analyze-plant: {e}")
+        return {"status": "error", "message": str(e)}

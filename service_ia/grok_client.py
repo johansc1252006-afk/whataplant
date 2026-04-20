@@ -138,3 +138,64 @@ Utilise un ton chaleureux, pédagogue et très descriptif. Donne des détails co
     except Exception as e:
         print(f"❌ Erreur Groq: {e}")
         return "Désolé, une erreur technique est survenue.", None
+    
+async def analyser_plante(nom_plante: str):
+    """
+    Appelle Groq pour obtenir l'analyse détaillée d'une plante.
+    Retourne un dictionnaire JSON (ou None en cas d'erreur).
+    """
+    prompt = f"""Tu es un expert en botanique. Analyse la plante suivante : "{nom_plante}".
+Réponds UNIQUEMENT au format JSON suivant, sans aucun texte avant ou après :
+{{
+  "sante": {{
+    "etat": "bonne sante ou description de la maladie detectee",
+    "symptomes": "symptomes de la maladie si applicable",
+    "traitements_naturels": "traitements naturels recommandes",
+    "traitements_chimiques": "traitements chimiques recommandes"
+  }},
+  "comestible": {{
+    "oui_non": "oui / non / partiellement",
+    "parties_comestibles": "feuilles, fruits, racines...",
+    "recettes": "idees de recettes simples",
+    "precautions": "precautions a prendre"
+  }},
+  "medicinale": {{
+    "usages": "usages traditionnels documentes",
+    "posologie": "posologie de base",
+    "contre_indications": "contre-indications"
+  }},
+  "toxicite": {{
+    "niveau": "faible / moyen / eleve",
+    "symptomes": "symptomes d'intoxication",
+    "premiers_secours": "premiers secours en cas d'ingestion"
+  }},
+  "nuisibilite": {{
+    "invasive": "oui / non",
+    "impact": "impact sur l'environnement, le sol ou les cultures"
+  }}
+}}"""
+
+    headers = {
+        "Authorization": f"Bearer {GROQ_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "llama-3.1-8b-instant",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.5,
+        "max_tokens": 800,
+        "response_format": {"type": "json_object"}
+    }
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.post(GROQ_API_URL, json=payload, headers=headers)
+            if response.status_code == 200:
+                data = response.json()
+                content = data['choices'][0]['message']['content']
+                return json.loads(content)   # retourne directement le dict
+            else:
+                print(f"Erreur Groq analyse: {response.status_code}")
+                return None
+    except Exception as e:
+        print(f"Exception dans analyser_plante: {e}")
+        return None

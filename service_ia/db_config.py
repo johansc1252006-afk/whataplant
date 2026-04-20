@@ -3,13 +3,12 @@ import bcrypt # Pour la sécurité des mots de passe (remplace password_hash de 
 import os 
 
 def get_db_connection():
-    """Connexion à la base MySQL (via variables d'environnement ou valeurs par défaut locales)"""
     return mysql.connector.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        user=os.getenv("DB_USER", "root"),
-        password=os.getenv("DB_PASSWORD", ""),
-        database=os.getenv("DB_NAME", "whataplant"),
-        port=os.getenv("DB_PORT", "3306")
+        host=os.getenv("MYSQLHOST", "localhost"),
+        user=os.getenv("MYSQLUSER", "root"),
+        password=os.getenv("MYSQLPASSWORD", ""),
+        database=os.getenv("MYSQLDATABASE", "whataplant"),
+        port=os.getenv("MYSQLPORT", "3306")
     )
 
 # ============================================

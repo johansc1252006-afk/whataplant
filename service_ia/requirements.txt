@@ -4,3 +4,4 @@ mysql-connector-python
 httpx
 python-multipart
 python-dotenv
+bcrypt

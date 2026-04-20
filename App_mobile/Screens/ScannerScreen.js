@@ -7,14 +7,12 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { API_URL } from '../config'; // Utilisation du port 5000
-import { GROQ_API_KEY } from '../keys'
+import { API_URL } from '../config';
 
 const { width } = Dimensions.get('window');
 
 const PLANTNET_API_KEY = "2b10FSp4CL2Gxo9D4GjQHbUu";
 const PLANTNET_URL = "https://my-api.plantnet.org/v2/identify/all";
-const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 export default function ScannerScreen({ navigation, route }) {
   const [permission, requestPermission] = useCameraPermissions();
@@ -59,7 +57,7 @@ export default function ScannerScreen({ navigation, route }) {
     }
   };
 
-  // 🔥 Sauvegarde sur le nouveau serveur Python (MySQL)
+  // 🔥 Sauvegarde sur le serveur Python (MySQL)
   const saveScanToServer = async (scanResult) => {
     try {
       const userId = await AsyncStorage.getItem('userId');
@@ -73,8 +71,8 @@ export default function ScannerScreen({ navigation, route }) {
           nom_plante: scanResult.nom_fr,
           nom_scientifique: scanResult.nom_sci || '',
           famille: scanResult.famille || '',
-          score: scanResult.score / 100, // Conversion en float
-          details: JSON.stringify(scanResult.details), // On garde TOUS les détails JSON (santé, toxique...)
+          score: scanResult.score / 100,
+          details: JSON.stringify(scanResult.details),
           image_url: scanResult.image_uri || ''
         })
       });
@@ -101,73 +99,35 @@ export default function ScannerScreen({ navigation, route }) {
 
       const meilleur = plantData.results[0];
       const nomFr = meilleur.species.commonNames?.[0] || meilleur.species.scientificNameWithoutAuthor;
+      const nomScientifique = meilleur.species.scientificName || '';
+      const famille = meilleur.species.family?.scientificName || '';
+      const score = Math.round(meilleur.score * 100);
 
-      // 🧠 TON PROMPT ORIGINAL RÉTABLI (Détails complets)
-      const groqPrompt = `Tu es un expert en botanique. Analyse la plante suivante : "${nomFr}".
-      Réponds UNIQUEMENT au format JSON suivant, sans aucun texte avant ou après :
-      {
-        "sante": {
-          "etat": "bonne sante ou description de la maladie detectee",
-          "symptomes": "symptomes de la maladie si applicable",
-          "traitements_naturels": "traitements naturels recommandes",
-          "traitements_chimiques": "traitements chimiques recommandes"
-        },
-        "comestible": {
-          "oui_non": "oui / non / partiellement",
-          "parties_comestibles": "feuilles, fruits, racines...",
-          "recettes": "idees de recettes simples",
-          "precautions": "precautions a prendre"
-        },
-        "medicinale": {
-          "usages": "usages traditionnels documentes",
-          "posologie": "posologie de base",
-          "contre_indications": "contre-indications"
-        },
-        "toxicite": {
-          "niveau": "faible / moyen / eleve",
-          "symptomes": "symptomes d'intoxication",
-          "premiers_secours": "premiers secours en cas d'ingestion"
-        },
-        "nuisibilite": {
-          "invasive": "oui / non",
-          "impact": "impact sur l'environnement, le sol ou les cultures"
-        }
-      }`;
-      
-      const groqResponse = await fetch(GROQ_URL, {
+      // 🔥 Appel au backend Python pour l'analyse détaillée
+      const response = await fetch(`${API_URL}/analyze-plant`, {
         method: 'POST',
-        headers: { 
-          'Authorization': `Bearer ${GROQ_API_KEY}`, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({
-          model: 'llama-3.1-8b-instant',
-          messages: [{ role: 'user', content: groqPrompt }],
-          temperature: 0.5,
-          max_tokens: 800,
-          response_format: { type: 'json_object' }
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nom_plante: nomFr })
       });
-
-      const groqData = await groqResponse.json();
-      const details = JSON.parse(groqData.choices[0].message.content);
+      const data = await response.json();
+      if (data.status !== 'success') throw new Error(data.message || "Analyse échouée");
+      const details = data.analyse;  // déjà un objet JSON
 
       const scanResult = { 
         nom_fr: nomFr,
-        nom_sci: meilleur.species.scientificName || '',
-        famille: meilleur.species.family?.scientificName || '',
-        score: Math.round(meilleur.score * 100),
+        nom_sci: nomScientifique,
+        famille: famille,
+        score: score,
         details: details,
         image_uri: imageUri,
         date: new Date().toISOString()
       };
 
-      // Sauvegarde locale + Serveur Python
       await saveScanToServer(scanResult);
-
       navigation.replace('Main', { lastScan: scanResult });
 
     } catch (e) {
+      console.error(e);
       Alert.alert("Oups", "Identification impossible.");
       setPhoto(null);
     } finally {
@@ -175,7 +135,7 @@ export default function ScannerScreen({ navigation, route }) {
     }
   };
 
-  // --- TON UI (GARDÉE À L'IDENTIQUE) ---
+  // --- UI inchangée ---
   if (!permission) return <View style={styles.container} />;
   if (!permission.granted) return (
     <View style={styles.container}>
