@@ -1,16 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ImageBackground, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { API_URL } from '../config'; // On utilise l'URL complète avec le port 5000
+import { API_URL } from '../config';
+import { Ionicons } from '@expo/vector-icons';
+import LottieView from 'lottie-react-native';
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+  const animationRef = useRef(null);
+  const timeoutRef = useRef(null);
+
+  // Nettoyage du timeout
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  // Démarrer la boucle neutre (tout le Lottie) au montage
+  useEffect(() => {
+    if (animationRef.current) {
+      animationRef.current.play(0, 392);
+    }
+  }, []);
+
+  // Gérer le focus du mot de passe
+  useEffect(() => {
+    if (animationRef.current) {
+      if (isPasswordFocused) {
+        animationRef.current.play(186, 186); // yeux fermés
+      } else {
+        animationRef.current.play(0, 392);   // retour neutre
+      }
+    }
+  }, [isPasswordFocused]);
+
+  // Animation fâchée (erreur)
+  const playAngry = () => {
+    if (animationRef.current) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      animationRef.current.play(313, 392);
+      timeoutRef.current = setTimeout(() => {
+        if (!isPasswordFocused) {
+          animationRef.current?.play(0, 392);
+        }
+      }, 2000);
+    }
+  };
 
   const sendLogin = async () => {
-    // Vérification simple avant l'envoi
     if (!email || !password) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs.");
+      playAngry();
       return;
     }
 
@@ -24,27 +68,29 @@ export default function LoginScreen({ navigation }) {
       const data = await response.json();
       
       if (data.status === 'success') {
-        // Sauvegarde de l'ID utilisateur (important pour l'historique et l'IA)
         await AsyncStorage.setItem('userId', data.user.id.toString());
-        await AsyncStorage.setItem('userName', data.user.nom); // On garde son nom pour l'accueil
-        
+        await AsyncStorage.setItem('userName', data.user.nom);
         navigation.navigate('Main');
       } else {
         Alert.alert("Echec de connexion", data.message);
+        playAngry();
       }
     } catch (error) {
       console.error(error);
       Alert.alert("Erreur", "Impossible de contacter le serveur Python. Vérifie que uvicorn est lancé.");
+      playAngry();
     }
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/background.png')}
-      style={styles.background}
-    >
+    <ImageBackground source={require('../../assets/background.png')} style={styles.background}>
       <View style={styles.overlay}>
         <View style={styles.card}>
+          <LottieView
+            ref={animationRef}
+            source={require('../../assets/animalot.json')}
+            style={styles.avatar}
+          />
           <Text style={styles.titre}>Connexion</Text>
           <Text style={styles.sousTitre}>Bon retour parmi nous 🌿</Text>
 
@@ -58,14 +104,21 @@ export default function LoginScreen({ navigation }) {
             autoCapitalize="none"
           />
 
-          <TextInput
-            style={styles.input}
-            placeholder="Mot de passe"
-            placeholderTextColor="rgba(255,255,255,0.6)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry={true}
-          />
+          <View style={styles.passwordContainer}>
+            <TextInput
+              style={[styles.input, styles.passwordInput]}
+              placeholder="Mot de passe"
+              placeholderTextColor="rgba(255,255,255,0.6)"
+              value={password}
+              onChangeText={setPassword}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => setIsPasswordFocused(false)}
+              secureTextEntry={!showPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
+              <Ionicons name={showPassword ? "eye-off" : "eye"} size={24} color="rgba(255,255,255,0.6)" />
+            </TouchableOpacity>
+          </View>
 
           <TouchableOpacity style={styles.bouton} onPress={sendLogin}>
             <Text style={styles.boutonTexte}>Se connecter</Text>
@@ -93,6 +146,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   card: { alignItems: 'center' },
+  avatar: { width: 150, height: 150, marginBottom: 10 },
   titre: {
     fontSize: 32,
     fontWeight: 'bold',
@@ -114,6 +168,20 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 15,
     marginBottom: 16,
+  },
+  passwordContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  passwordInput: {
+    marginBottom: 0,
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 14,
+    top: 12,
   },
   bouton: {
     width: '100%',

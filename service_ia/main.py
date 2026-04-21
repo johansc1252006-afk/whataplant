@@ -39,8 +39,8 @@ async def login(request: LoginRequest):
     resultat = db_config.verifier_login(request.email, request.password)
     return resultat
 
-@app.post("/register")
-async def register(request: RegisterRequest):
+@app.post("/signup")
+async def signup(request: RegisterRequest):
     # Appelle la fonction creer_compte que tu as dans db_config
     resultat = db_config.creer_compte(request.nom, request.email, request.password)
     return resultat
