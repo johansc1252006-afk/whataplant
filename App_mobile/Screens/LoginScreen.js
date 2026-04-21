@@ -45,7 +45,7 @@ export default function LoginScreen({ navigation }) {
         <View style={styles.card}>
           <LottieView
             ref={animationRef}
-            source={require('../assets/animalot.json')}
+            source={require('../../assets/animalot.json')}
             style={styles.avatar}
             progress={0.0}   // Valeur neutre pour l'instant
             loop
