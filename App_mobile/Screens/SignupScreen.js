@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ImageBackground, StyleSheet, Alert } from 'react-native';
 import { API_URL } from '../config';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,14 +9,48 @@ export default function SignupScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const animationRef = useRef(null);
+  const timeoutRef = useRef(null);
 
-  // Pour l'instant, l'avatar reste neutre (progress = 0.0)
-  const getProgress = () => 0.0;
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (animationRef.current) {
+      animationRef.current.play(0, 392);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (animationRef.current) {
+      if (isPasswordFocused) {
+        animationRef.current.play(186, 186);
+      } else {
+        animationRef.current.play(0, 392);
+      }
+    }
+  }, [isPasswordFocused]);
+
+  const playAngry = () => {
+    if (animationRef.current) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      animationRef.current.play(313, 392);
+      timeoutRef.current = setTimeout(() => {
+        if (!isPasswordFocused) {
+          animationRef.current?.play(0, 392);
+        }
+      }, 2000);
+    }
+  };
 
   const SendSignup = async () => {
     if (!nom || !email || !password) {
       Alert.alert("Champs manquants", "Merci de remplir toutes les informations.");
+      playAngry();
       return;
     }
 
@@ -32,10 +66,12 @@ export default function SignupScreen({ navigation }) {
         navigation.navigate('Login');
       } else {
         Alert.alert('Erreur', data.message);
+        playAngry();
       }
     } catch (error) {
       console.error(error);
       Alert.alert('Erreur', 'Connexion impossible au serveur Python (Signup).');
+      playAngry();
     }
   };
 
@@ -47,8 +83,6 @@ export default function SignupScreen({ navigation }) {
             ref={animationRef}
             source={require('../../assets/animalot.json')}
             style={styles.avatar}
-            progress={getProgress()}
-            loop
           />
           <Text style={styles.titre}>Créer un compte</Text>
           <Text style={styles.sousTitre}>Rejoins WhatAPlant 🌿</Text>
@@ -78,6 +112,8 @@ export default function SignupScreen({ navigation }) {
               placeholderTextColor="rgba(255,255,255,0.6)"
               value={password}
               onChangeText={setPassword}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => setIsPasswordFocused(false)}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
@@ -127,14 +163,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  passwordInput: {
-    marginBottom: 0,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 14,
-    top: 12,
-  },
+  passwordInput: { marginBottom: 0 },
+  eyeIcon: { position: 'absolute', right: 14, top: 12 },
   bouton: {
     width: '100%',
     backgroundColor: '#1D9E75',

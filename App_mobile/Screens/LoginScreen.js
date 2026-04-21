@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ImageBackground, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_URL } from '../config';
@@ -9,33 +9,70 @@ export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const animationRef = useRef(null);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (animationRef.current) {
+      animationRef.current.play(0, 392);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (animationRef.current) {
+      if (isPasswordFocused) {
+        animationRef.current.play(186, 186);
+      } else {
+        animationRef.current.play(0, 392);
+      }
+    }
+  }, [isPasswordFocused]);
+
+  const playAngry = () => {
+    if (animationRef.current) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      animationRef.current.play(313, 392);
+      timeoutRef.current = setTimeout(() => {
+        if (!isPasswordFocused) {
+          animationRef.current?.play(0, 392);
+        }
+      }, 2000);
+    }
+  };
 
   const sendLogin = async () => {
     if (!email || !password) {
       Alert.alert("Erreur", "Veuillez remplir tous les champs.");
+      playAngry();
       return;
     }
 
     try {
-      const response = await fetch(`${API_URL}/login`, { 
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
       });
-
       const data = await response.json();
-      
       if (data.status === 'success') {
         await AsyncStorage.setItem('userId', data.user.id.toString());
         await AsyncStorage.setItem('userName', data.user.nom);
         navigation.navigate('Main');
       } else {
         Alert.alert("Echec de connexion", data.message);
+        playAngry();
       }
     } catch (error) {
       console.error(error);
-      Alert.alert("Erreur", "Impossible de contacter le serveur Python. Vérifie que uvicorn est lancé.");
+      Alert.alert("Erreur", "Impossible de contacter le serveur Python.");
+      playAngry();
     }
   };
 
@@ -47,8 +84,6 @@ export default function LoginScreen({ navigation }) {
             ref={animationRef}
             source={require('../../assets/animalot.json')}
             style={styles.avatar}
-            progress={0.0}   // Valeur neutre pour l'instant
-            loop
           />
           <Text style={styles.titre}>Connexion</Text>
           <Text style={styles.sousTitre}>Bon retour parmi nous 🌿</Text>
@@ -70,6 +105,8 @@ export default function LoginScreen({ navigation }) {
               placeholderTextColor="rgba(255,255,255,0.6)"
               value={password}
               onChangeText={setPassword}
+              onFocus={() => setIsPasswordFocused(true)}
+              onBlur={() => setIsPasswordFocused(false)}
               secureTextEntry={!showPassword}
             />
             <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eyeIcon}>
@@ -132,14 +169,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     position: 'relative',
   },
-  passwordInput: {
-    marginBottom: 0,
-  },
-  eyeIcon: {
-    position: 'absolute',
-    right: 14,
-    top: 12,
-  },
+  passwordInput: { marginBottom: 0 },
+  eyeIcon: { position: 'absolute', right: 14, top: 12 },
   bouton: {
     width: '100%',
     backgroundColor: '#1D9E75',
